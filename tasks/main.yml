@@ -1,0 +1,96 @@
+---
+- name: Tempo | Create storage directory
+  ansible.builtin.file:
+    dest: "{{ tempo_host_storagedir }}"
+    state: directory
+    # TODO(sbog): change it from 0777 to according 0755 and fix user/group ownership
+    mode: "0777"
+    owner: root
+    group: root
+
+- name: Tempo | Create host config directory
+  ansible.builtin.file:
+    dest: "{{ tempo_host_confdir }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Tempo | Ensure tempo config
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "{{ tempo_host_configdir }}/{{ item | basename }}"
+    owner: root
+    group: root
+    mode: "0644"
+  with_fileglob:
+    - "../templates/tempo.yaml.j2"
+
+- name: Tempo | Start docker tempo container
+  community.docker.docker_compose:
+    project_name: tempo
+    definition:
+      version: '2'
+      services:
+        tempo:
+          image: "{{ tempo_docker_image }}:{{ tempo_docker_tag }}"
+          container_name: "{{ tempo_container_name }}"
+          ports: "{{ tempo_ports }}"
+          volumes: "{{ tempo_volumes }}"
+          hostname: "{{ tempo_docker_hostname }}"
+          restart: always
+          labels: "{{ tempo.docker_labels }}"
+          environment: ""
+      networks:
+        default:
+          external:
+            name: "{{ tempo_docker_network_name }}"
+  when: not tempo_swarm_cluster or tempo_swarm_manager is undefined
+
+- name: Deploy tempo to docker swarm
+  when:
+    - tempo_swarm_cluster
+    - tempo_swarm_manager is defined
+  delegate_to: "{{ tempo_swarm_manager }}"
+  block:
+    - name: Ensure pip installation
+      ansible.builtin.package:
+        name: "python3-pip"
+        state: present
+
+    - name: Install newer version of pip itself
+      ansible.builtin.pip:
+        name: "pip"
+        state: latest
+        executable: pip3
+
+    - name: Install jsondiff from pip
+      ansible.builtin.pip:
+        name: "jsondiff"
+        state: present
+        executable: pip3
+
+    - name: Deploy docker tempo container in swarm
+      community.docker.docker_stack:
+        state: present
+        name: "{{ tempo_stack_name }}"
+        with_registry_auth: true
+        compose:
+          - version: '3.5'
+            services:
+              tempo:
+                image: "{{ tempo_docker_image }}"
+                hostname: "{{ tempo_docker_hostname }}"
+                labels: "{{ tempo.docker_labels }}"
+                ports: "{{ tempo_ports }}"
+                volumes: "{{ tempo_volumes }}"
+                environment: ""
+                deploy: "{{ tempo_swarm_deploy }}"
+            networks:
+              default:
+                external:
+                  name: "{{ tempo_docker_network_name }}"
+            volumes:
+              tempo:
+                driver: local
+      run_once: true

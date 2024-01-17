@@ -1,0 +1,57 @@
+---
+tempo_compactor_block_retention: 720h
+tempo_storage_config:
+  backend: s3                        # backend configuration to use
+  wal:
+    path: /tmp/tempo/wal             # where to store the the wal locally
+  s3:
+    bucket: tempo                    # how to store data in s3
+    endpoint: minio:9000
+    access_key: tempo
+    secret_key: supersecret
+    insecure: true
+    # For using AWS, select the appropriate regional endpoint and region
+    # endpoint: s3.dualstack.us-west-2.amazonaws.com
+    # region: us-west-2
+tempo_docker_labels: []
+
+tempo_docker_image: "grafana/tempo"
+tempo_docker_tag: latest
+tempo_ports:
+  - "127.0.0.1:3200:3200"
+tempo_host_confdir: /etc/tempo
+tempo_host_storagedir: /tmp/tempo_storage
+tempo_volumes:
+  - "{{ tempo_host_storagedir }}:/tmp/tempo"
+  - "{{ tempo_host_confdir }}:/etc/tempo"
+
+# Docker-related networking settings
+tempo_docker_network_name: prom_network
+
+tempo_container_name: "tempo"
+tempo_docker_hostname: "tempo"
+
+
+tempo_stack_name: monitoring
+tempo_swarm_cluster: false
+tempo_swarm_deploy:
+  mode: replicated
+  replicas: 1
+  placement:
+    constraints:
+      - node.labels.monitoring == true
+
+# example tempo_swarm_deploy:
+#   mode: replicated
+#   replicas: 1
+#   update_config:
+#     order: start-first
+#   placement:
+#     max_replicas_per_node: 1
+#     constraints:
+#       - node.labels.monitoring == true
+#   resources:
+#     limits:
+#       memory: 512M
+#     reservations:
+#       memory: 256M

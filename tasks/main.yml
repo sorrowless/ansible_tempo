@@ -19,12 +19,12 @@
 - name: Tempo | Ensure tempo config
   ansible.builtin.template:
     src: "{{ item }}"
-    dest: "{{ tempo_host_configdir }}/{{ item | basename }}"
+    dest: "{{ tempo_host_confdir }}/{{ item | basename }}"
     owner: root
     group: root
     mode: "0644"
   with_fileglob:
-    - "../templates/tempo.yaml.j2"
+    - "../templates/tempo.yaml"
 
 - name: Tempo | Start docker tempo container
   community.docker.docker_compose:
@@ -34,13 +34,14 @@
       services:
         tempo:
           image: "{{ tempo_docker_image }}:{{ tempo_docker_tag }}"
+          command: ["-config.file=/etc/tempo/tempo.yaml"]
           container_name: "{{ tempo_container_name }}"
           ports: "{{ tempo_ports }}"
           volumes: "{{ tempo_volumes }}"
           hostname: "{{ tempo_docker_hostname }}"
           restart: always
-          labels: "{{ tempo.docker_labels }}"
-          environment: ""
+          labels: "{{ tempo_docker_labels }}"
+          environment: []
       networks:
         default:
           external:

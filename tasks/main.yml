@@ -27,10 +27,9 @@
     - "../templates/tempo.yaml"
 
 - name: Tempo | Start docker tempo container
-  community.docker.docker_compose:
+  community.docker.docker_compose_v2:
     project_name: tempo
     definition:
-      version: '2'
       services:
         tempo:
           image: "{{ tempo_docker_image }}:{{ tempo_docker_tag }}"
@@ -44,8 +43,8 @@
           environment: []
       networks:
         default:
-          external:
-            name: "{{ tempo_docker_network_name }}"
+          external: true
+          name: "{{ tempo_docker_network_name }}"
   when: not tempo_swarm_cluster or tempo_swarm_manager is undefined
 
 - name: Deploy tempo to docker swarm

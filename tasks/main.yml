@@ -3,10 +3,9 @@
   ansible.builtin.file:
     dest: "{{ tempo_host_storagedir }}"
     state: directory
-    # TODO(sbog): change it from 0777 to according 0755 and fix user/group ownership
-    mode: "0777"
-    owner: root
-    group: root
+    mode: "0755"
+    owner: 10001
+    group: 10001
 
 - name: Tempo | Create host config directory
   ansible.builtin.file:
